@@ -110,6 +110,16 @@ export default function InvitationPageClient({
 
         {phase === "revealed" && (
           <div className="animate-bounce-in">
+            {scratchCard?.hidden_reveal_type === "image" && scratchCard.hidden_scratch_image_url && (
+              <div className="mb-6 rounded-2xl overflow-hidden shadow-lg bg-white/10 backdrop-blur">
+                <img
+                  src={scratchCard.hidden_scratch_image_url}
+                  alt=""
+                  className="w-full max-h-72 object-contain"
+                />
+              </div>
+            )}
+
             <div className="text-center mb-6">
               <div className="text-5xl mb-3">🎉</div>
               <h1 className="text-3xl font-bold text-white mb-2 drop-shadow-lg">אתה מוזמן!</h1>

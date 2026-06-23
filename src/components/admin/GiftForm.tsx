@@ -197,6 +197,32 @@ export default function GiftForm({ initialData, onSubmit, submitLabel }: GiftFor
           </FormField>
 
           <FormField
+            label="אישור הגעה"
+            hint="בחר אם המוזמנים חייבים לכתוב שם כשמאשרים הגעה"
+          >
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={form.rsvp_require_name ?? true}
+                  onChange={(e) => updateField("rsvp_require_name", e.target.checked)}
+                  className="w-5 h-5 mt-0.5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                />
+                <div>
+                  <span className="text-sm font-medium text-gray-800 block">
+                    דרוש שם באישור הגעה
+                  </span>
+                  <span className="text-xs text-gray-500 mt-1 block">
+                    {(form.rsvp_require_name ?? true)
+                      ? "מסומן — המוזמן יכתוב שם ותראה מי מגיע"
+                      : "לא מסומן — המוזמן לוחץ כן/לא בלי שם, ותראה רק כמה מגיעים"}
+                  </span>
+                </div>
+              </label>
+            </div>
+          </FormField>
+
+          <FormField
             label="מה מוסתר מתחת לגירוד?"
             hint="תמונת ההזמנה שתיחשף כשמגרדים, או טקסט פשוט"
           >
@@ -304,21 +330,6 @@ export default function GiftForm({ initialData, onSubmit, submitLabel }: GiftFor
                 onRemove={() => updateScratchCard(0, { scratch_cover_image_url: null })}
               />
             )}
-          </FormField>
-
-          <FormField
-            label="אישור הגעה"
-            hint="כשכבוי — אורחים יכולים לאשר הגעה בלי שם, ותראה רק כמה מגיעים"
-          >
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={form.rsvp_require_name ?? true}
-                onChange={(e) => updateField("rsvp_require_name", e.target.checked)}
-                className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
-              />
-              <span className="text-sm text-gray-700">דרוש שם באישור הגעה</span>
-            </label>
           </FormField>
 
           <FormField

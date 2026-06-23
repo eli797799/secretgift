@@ -121,7 +121,7 @@ export default function InvitationRsvpForm({
               onClick={() => submit("declined")}
               className="py-3.5 bg-white/20 hover:bg-white/30 text-white rounded-xl font-bold border border-white/30 transition-colors disabled:opacity-50"
             >
-              😔 לא יכול להגיע
+              לא יכול להגיע
             </button>
           </div>
         </>

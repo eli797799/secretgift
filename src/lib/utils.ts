@@ -4,14 +4,19 @@ export function generateSlug(): string {
   return nanoid(8);
 }
 
+export function getAppBaseUrl(): string {
+  if (typeof window !== "undefined" && window.location.origin) {
+    return window.location.origin;
+  }
+  return process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+}
+
 export function getGiftUrl(slug: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  return `${baseUrl}/g/${slug}`;
+  return `${getAppBaseUrl()}/g/${slug}`;
 }
 
 export function getInvitationDetailsUrl(slug: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-  return `${baseUrl}/g/${slug}/details`;
+  return `${getAppBaseUrl()}/g/${slug}/details`;
 }
 
 export function formatDate(dateString: string | null): string {

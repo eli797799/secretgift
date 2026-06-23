@@ -29,7 +29,7 @@ const COVER_PLACEHOLDER: Record<string, string> = {
   custom: "#9CA3AF",
 };
 
-const REVEAL_THRESHOLD = 0.6;
+const REVEAL_THRESHOLD = 0.95;
 
 export default function ScratchCard({
   hiddenRevealType = "text",
@@ -90,7 +90,9 @@ export default function ScratchCard({
     const ratio = transparent / (pixels.length / 4);
     if (ratio >= REVEAL_THRESHOLD) {
       hasRevealed.current = true;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       canvas.style.opacity = "0";
+      canvas.style.pointerEvents = "none";
       canvas.style.transition = "opacity 0.5s ease";
       onReveal();
     }
