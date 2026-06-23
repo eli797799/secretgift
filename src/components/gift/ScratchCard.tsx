@@ -1,0 +1,208 @@
+"use client";
+
+import { useEffect, useRef, useCallback } from "react";
+import type { ScratchCoverType } from "@/types/gift";
+
+interface ScratchCardProps {
+  hiddenText: string;
+  coverType: ScratchCoverType;
+  coverImageUrl: string | null;
+  onScratchStart: () => void;
+  onReveal: () => void;
+}
+
+const COVER_COLORS: Record<string, string> = {
+  gray: "#9CA3AF",
+  gold: "#D4AF37",
+  silver: "#C0C0C0",
+};
+
+const REVEAL_THRESHOLD = 0.3;
+
+export default function ScratchCard({
+  hiddenText,
+  coverType,
+  coverImageUrl,
+  onScratchStart,
+  onReveal,
+}: ScratchCardProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isDrawing = useRef(false);
+  const hasScratched = useRef(false);
+  const hasRevealed = useRef(false);
+  const lastPos = useRef<{ x: number; y: number } | null>(null);
+  const brushSizeRef = useRef(50);
+
+  const checkReveal = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || hasRevealed.current) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const pixels = imageData.data;
+    let transparent = 0;
+
+    for (let i = 3; i < pixels.length; i += 4) {
+      if (pixels[i] < 128) transparent++;
+    }
+
+    const ratio = transparent / (pixels.length / 4);
+    if (ratio >= REVEAL_THRESHOLD) {
+      hasRevealed.current = true;
+      canvas.style.opacity = "0";
+      canvas.style.transition = "opacity 0.5s ease";
+      onReveal();
+    }
+  }, [onReveal]);
+
+  const drawScratch = useCallback(
+    (x: number, y: number) => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      if (!hasScratched.current) {
+        hasScratched.current = true;
+        onScratchStart();
+      }
+
+      const brush = brushSizeRef.current;
+
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      ctx.lineWidth = brush * 2;
+
+      if (lastPos.current) {
+        ctx.beginPath();
+        ctx.moveTo(lastPos.current.x, lastPos.current.y);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      }
+
+      ctx.beginPath();
+      ctx.arc(x, y, brush, 0, Math.PI * 2);
+      ctx.fill();
+
+      lastPos.current = { x, y };
+    },
+    [onScratchStart]
+  );
+
+  const getPos = useCallback((clientX: number, clientY: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return { x: 0, y: 0 };
+
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
+    };
+  }, []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const container = containerRef.current;
+    if (!canvas || !container) return;
+
+    const resize = () => {
+      const rect = container.getBoundingClientRect();
+      canvas.width = rect.width * 2;
+      canvas.height = rect.height * 2;
+      brushSizeRef.current = Math.max(canvas.width, canvas.height) * 0.07;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+
+      if (coverType === "custom" && coverImageUrl) {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+        img.src = coverImageUrl;
+      } else {
+        const color = COVER_COLORS[coverType] || COVER_COLORS.gray;
+        const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        if (coverType === "gold") {
+          gradient.addColorStop(0, "#F5E6A3");
+          gradient.addColorStop(0.5, "#D4AF37");
+          gradient.addColorStop(1, "#B8960C");
+        } else if (coverType === "silver") {
+          gradient.addColorStop(0, "#E8E8E8");
+          gradient.addColorStop(0.5, "#C0C0C0");
+          gradient.addColorStop(1, "#A0A0A0");
+        } else {
+          gradient.addColorStop(0, "#B0B0B0");
+          gradient.addColorStop(1, color);
+        }
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = "rgba(255,255,255,0.3)";
+        ctx.font = `${canvas.width * 0.06}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.fillText("✋ גרד כאן", canvas.width / 2, canvas.height / 2);
+      }
+    };
+
+    resize();
+    window.addEventListener("resize", resize);
+    return () => window.removeEventListener("resize", resize);
+  }, [coverType, coverImageUrl]);
+
+  function handlePointerDown(e: React.PointerEvent) {
+    e.preventDefault();
+    (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
+    isDrawing.current = true;
+    lastPos.current = null;
+    const pos = getPos(e.clientX, e.clientY);
+    drawScratch(pos.x, pos.y);
+  }
+
+  function handlePointerMove(e: React.PointerEvent) {
+    if (!isDrawing.current) return;
+    e.preventDefault();
+    const pos = getPos(e.clientX, e.clientY);
+    drawScratch(pos.x, pos.y);
+    checkReveal();
+  }
+
+  function handlePointerUp() {
+    if (isDrawing.current) {
+      isDrawing.current = false;
+      lastPos.current = null;
+      checkReveal();
+    }
+  }
+
+  return (
+    <div ref={containerRef} className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
+      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100 p-6">
+        <p className="text-2xl sm:text-3xl font-bold text-center text-gray-800 leading-relaxed">
+          {hiddenText || "🎁 הפתעה מיוחדת!"}
+        </p>
+      </div>
+      <canvas
+        ref={canvasRef}
+        className="scratch-canvas absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing touch-none"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+      />
+      <p className="absolute bottom-3 left-0 right-0 text-center text-white/80 text-sm pointer-events-none drop-shadow">
+        גרד עם האצבע או העכבר
+      </p>
+    </div>
+  );
+}
