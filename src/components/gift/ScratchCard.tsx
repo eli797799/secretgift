@@ -30,6 +30,7 @@ const COVER_PLACEHOLDER: Record<string, string> = {
 };
 
 const REVEAL_THRESHOLD = 0.95;
+const IDLE_REVEAL_MS = 3000;
 
 export default function ScratchCard({
   hiddenRevealType = "text",
@@ -51,7 +52,39 @@ export default function ScratchCard({
   const brushSizeRef = useRef(50);
   const scratchSoundRef = useRef<ScratchSound | null>(null);
   const customAudioRef = useRef<HTMLAudioElement | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [coverReady, setCoverReady] = useState(false);
+
+  const clearIdleTimer = useCallback(() => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
+  }, []);
+
+  const revealAll = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || hasRevealed.current) return;
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    hasRevealed.current = true;
+    clearIdleTimer();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    canvas.style.opacity = "0";
+    canvas.style.pointerEvents = "none";
+    canvas.style.transition = "opacity 0.5s ease";
+    onReveal();
+  }, [clearIdleTimer, onReveal]);
+
+  const scheduleIdleReveal = useCallback(() => {
+    if (hasRevealed.current || !hasScratched.current) return;
+    clearIdleTimer();
+    idleTimerRef.current = setTimeout(() => {
+      revealAll();
+    }, IDLE_REVEAL_MS);
+  }, [clearIdleTimer, revealAll]);
 
   const startCustomSound = useCallback(() => {
     if (!customSoundUrl) return;
@@ -89,14 +122,9 @@ export default function ScratchCard({
 
     const ratio = transparent / (pixels.length / 4);
     if (ratio >= REVEAL_THRESHOLD) {
-      hasRevealed.current = true;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      canvas.style.opacity = "0";
-      canvas.style.pointerEvents = "none";
-      canvas.style.transition = "opacity 0.5s ease";
-      onReveal();
+      revealAll();
     }
-  }, [onReveal]);
+  }, [revealAll]);
 
   const drawScratch = useCallback(
     (x: number, y: number) => {
@@ -135,8 +163,9 @@ export default function ScratchCard({
       ctx.fill();
 
       lastPos.current = { x, y };
+      scheduleIdleReveal();
     },
-    [onScratchStart]
+    [onScratchStart, scheduleIdleReveal]
   );
 
   const getPos = useCallback((clientX: number, clientY: number) => {
@@ -211,6 +240,7 @@ export default function ScratchCard({
 
   function handlePointerDown(e: React.PointerEvent) {
     e.preventDefault();
+    clearIdleTimer();
     (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
     isDrawing.current = true;
     lastPos.current = null;
@@ -238,15 +268,17 @@ export default function ScratchCard({
       scratchSoundRef.current?.stop();
       stopCustomSound();
       checkReveal();
+      scheduleIdleReveal();
     }
   }
 
   useEffect(() => {
     return () => {
+      clearIdleTimer();
       scratchSoundRef.current?.stop();
       stopCustomSound();
     };
-  }, [stopCustomSound]);
+  }, [clearIdleTimer, stopCustomSound]);
 
   useEffect(() => {
     customAudioRef.current = null;
