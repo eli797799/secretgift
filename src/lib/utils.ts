@@ -9,6 +9,11 @@ export function getGiftUrl(slug: string): string {
   return `${baseUrl}/g/${slug}`;
 }
 
+export function getInvitationDetailsUrl(slug: string): string {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  return `${baseUrl}/g/${slug}/details`;
+}
+
 export function formatDate(dateString: string | null): string {
   if (!dateString) return "ללא תפוגה";
   return new Date(dateString).toLocaleDateString("he-IL", {

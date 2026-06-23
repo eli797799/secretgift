@@ -14,7 +14,20 @@ export default async function EditGiftPage({
 
   const { id } = await params;
   const supabase = await createClient();
-  const { data: gift } = await supabase.from("gifts").select("*").eq("id", id).single();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  const { data: gift } = await supabase
+    .from("gifts")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
 
   if (!gift) {
     redirect("/dashboard");

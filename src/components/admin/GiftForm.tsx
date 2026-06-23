@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type {
   GiftFormData,
+  GiftType,
   ScratchCardItem,
   ScratchCoverType,
   RevealAnimationType,
@@ -10,12 +11,14 @@ import type {
 } from "@/types/gift";
 import {
   DEFAULT_GIFT_FORM,
+  GIFT_TYPE_OPTIONS,
   SCRATCH_COVER_OPTIONS,
   REVEAL_ANIMATION_OPTIONS,
   WINNER_IMAGE_OPTIONS,
 } from "@/types/gift";
 import { DEFAULT_SCRATCH_CARD } from "@/lib/gift-cards";
 import SoundUpload from "./SoundUpload";
+import DateTimePicker from "./DateTimePicker";
 
 interface GiftFormProps {
   initialData?: GiftFormData;
@@ -94,13 +97,246 @@ export default function GiftForm({ initialData, onSubmit, submitLabel }: GiftFor
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (form.gift_type === "invitation") {
+      if (!form.event_name?.trim() || !form.event_datetime) {
+        alert("נא למלא שם אירוע ותאריך ושעה");
+        return;
+      }
+    }
     setLoading(true);
     await onSubmit(form);
     setLoading(false);
   }
 
+  function setGiftType(type: GiftType) {
+    if (type === "invitation") {
+      setForm((prev) => ({
+        ...prev,
+        gift_type: type,
+        scratch_cards: [
+          {
+            hidden_reveal_type: "text",
+            hidden_scratch_text: "אתה מוזמן! 🎉",
+            hidden_scratch_image_url: null,
+            scratch_cover_type: "gold",
+            scratch_cover_image_url: null,
+          },
+        ],
+      }));
+    } else {
+      updateField("gift_type", type);
+    }
+  }
+
+  const isInvitation = form.gift_type === "invitation";
+  const invitationCard = form.scratch_cards[0];
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <FormField label="סוג כרטיס">
+        <div className="grid grid-cols-2 gap-2">
+          {GIFT_TYPE_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setGiftType(opt.value)}
+              className={`p-4 rounded-xl border-2 text-sm font-medium transition-all ${
+                form.gift_type === opt.value
+                  ? "border-purple-500 bg-purple-50 text-purple-700"
+                  : "border-gray-200 hover:border-gray-300"
+              }`}
+            >
+              <span className="text-2xl block mb-1">{opt.emoji}</span>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </FormField>
+
+      {isInvitation ? (
+        <>
+          <FormField label="שם האירוע" hint="לדוגמה: חתונה / בר מצווה / יום הולדת">
+            <input
+              type="text"
+              value={form.event_name || ""}
+              onChange={(e) => updateField("event_name", e.target.value || null)}
+              className={inputClass}
+              placeholder="חתונת דני ומיה"
+              required
+            />
+          </FormField>
+
+          <FormField label="תאריך ושעה" hint="בחר תאריך מהלוח ושעה — או לחץ על שעה נפוצה">
+            <DateTimePicker
+              value={form.event_datetime}
+              onChange={(iso) => updateField("event_datetime", iso)}
+              required
+            />
+          </FormField>
+
+          <FormField
+            label="מיקום האירוע (אופציונלי)"
+            hint="כתובת או שם מקום — אם תמלא, המוזמנים יוכלו לנווט בוויז ובמפות"
+          >
+            <input
+              type="text"
+              value={form.event_location || ""}
+              onChange={(e) => updateField("event_location", e.target.value || null)}
+              className={inputClass}
+              placeholder="לדוגמה: אולם הר הצופה, ירושלים"
+            />
+          </FormField>
+
+          <FormField label="הודעה אישית" hint="מוצגת אחרי חשיפת פרטי ההזמנה">
+            <textarea
+              value={form.message}
+              onChange={(e) => updateField("message", e.target.value)}
+              className={`${inputClass} min-h-[100px]`}
+              placeholder="נשמח לראותכם! ❤️"
+            />
+          </FormField>
+
+          <FormField
+            label="מה מוסתר מתחת לגירוד?"
+            hint="תמונת ההזמנה שתיחשף כשמגרדים, או טקסט פשוט"
+          >
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <button
+                type="button"
+                onClick={() =>
+                  updateScratchCard(0, {
+                    hidden_reveal_type: "text",
+                    hidden_scratch_image_url: null,
+                    hidden_scratch_text: invitationCard?.hidden_scratch_text || "אתה מוזמן! 🎉",
+                  })
+                }
+                className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                  (invitationCard?.hidden_reveal_type ?? "text") === "text"
+                    ? "border-purple-500 bg-purple-50 text-purple-700"
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                ✏️ טקסט
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  updateScratchCard(0, {
+                    hidden_reveal_type: "image",
+                    hidden_scratch_text: "",
+                  })
+                }
+                className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                  invitationCard?.hidden_reveal_type === "image"
+                    ? "border-purple-500 bg-purple-50 text-purple-700"
+                    : "border-gray-200 hover:border-gray-300"
+                }`}
+              >
+                🖼️ תמונת הזמנה
+              </button>
+            </div>
+
+            {(invitationCard?.hidden_reveal_type ?? "text") === "text" ? (
+              <input
+                type="text"
+                value={invitationCard?.hidden_scratch_text || ""}
+                onChange={(e) =>
+                  updateScratchCard(0, { hidden_scratch_text: e.target.value })
+                }
+                className={inputClass}
+                placeholder="אתה מוזמן! 🎉"
+              />
+            ) : (
+              <ImageUpload
+                currentUrl={invitationCard?.hidden_scratch_image_url ?? null}
+                uploading={uploading === "invitation-hidden"}
+                onUpload={(e) =>
+                  handleImageUpload(
+                    e,
+                    (url) =>
+                      updateScratchCard(0, {
+                        hidden_scratch_image_url: url,
+                        hidden_reveal_type: "image",
+                      }),
+                    "invitation-hidden",
+                    "invitation-images"
+                  )
+                }
+                onRemove={() =>
+                  updateScratchCard(0, { hidden_scratch_image_url: null })
+                }
+                label="📷 העלה תמונת הזמנה"
+              />
+            )}
+          </FormField>
+
+          <FormField label="שכבת הגירוד" hint="השכבה שמכסה את ההזמנה — מגרדים אותה לגלות">
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {SCRATCH_COVER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() =>
+                    updateScratchCard(0, { scratch_cover_type: opt.value as ScratchCoverType })
+                  }
+                  className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                    invitationCard?.scratch_cover_type === opt.value
+                      ? "border-purple-500 bg-purple-50 text-purple-700"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            {invitationCard?.scratch_cover_type === "custom" && (
+              <ImageUpload
+                currentUrl={invitationCard.scratch_cover_image_url}
+                uploading={uploading === "invitation-cover"}
+                onUpload={(e) =>
+                  handleImageUpload(
+                    e,
+                    (url) => updateScratchCard(0, { scratch_cover_image_url: url }),
+                    "invitation-cover",
+                    "scratch-covers"
+                  )
+                }
+                onRemove={() => updateScratchCard(0, { scratch_cover_image_url: null })}
+              />
+            )}
+          </FormField>
+
+          <FormField
+            label="אישור הגעה"
+            hint="כשכבוי — אורחים יכולים לאשר הגעה בלי שם, ותראה רק כמה מגיעים"
+          >
+            <label className="flex items-center gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.rsvp_require_name ?? true}
+                onChange={(e) => updateField("rsvp_require_name", e.target.checked)}
+                className="w-5 h-5 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+              />
+              <span className="text-sm text-gray-700">דרוש שם באישור הגעה</span>
+            </label>
+          </FormField>
+
+          <FormField
+            label="וואטסאפ שלך"
+            hint="לכפתור 'אני מגיע!' — המקבל ישלח לך אישור הגעה"
+          >
+            <input
+              type="tel"
+              value={form.owner_whatsapp || ""}
+              onChange={(e) => updateField("owner_whatsapp", e.target.value || null)}
+              className={inputClass}
+              placeholder="0501234567"
+              dir="ltr"
+            />
+          </FormField>
+        </>
+      ) : (
+        <>
       <FormField label="כותרת המתנה" hint="לדוגמה: מזל טוב! / זכית! / הפתעה מיוחדת!">
         <input
           type="text"
@@ -152,16 +388,62 @@ export default function GiftForm({ initialData, onSubmit, submitLabel }: GiftFor
               )}
             </div>
 
-            <FormField label="הטקסט המוסתר" hint="מוצג אחרי גירוד הכרטיס">
-              <input
-                type="text"
-                value={card.hidden_scratch_text}
-                onChange={(e) =>
-                  updateScratchCard(index, { hidden_scratch_text: e.target.value })
-                }
-                className={inputClass}
-                placeholder="גרד כאן לגלות!"
-              />
+            <FormField label="מה מוסתר מתחת לגירוד?" hint="מוצג אחרי גירוד הכרטיס">
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateScratchCard(index, { hidden_reveal_type: "text", hidden_scratch_image_url: null })
+                  }
+                  className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                    (card.hidden_reveal_type ?? "text") === "text"
+                      ? "border-purple-500 bg-purple-50 text-purple-700"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  ✏️ טקסט
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    updateScratchCard(index, { hidden_reveal_type: "image", hidden_scratch_text: "" })
+                  }
+                  className={`p-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                    card.hidden_reveal_type === "image"
+                      ? "border-purple-500 bg-purple-50 text-purple-700"
+                      : "border-gray-200 hover:border-gray-300"
+                  }`}
+                >
+                  🖼️ תמונה
+                </button>
+              </div>
+
+              {(card.hidden_reveal_type ?? "text") === "text" ? (
+                <input
+                  type="text"
+                  value={card.hidden_scratch_text}
+                  onChange={(e) =>
+                    updateScratchCard(index, { hidden_scratch_text: e.target.value })
+                  }
+                  className={inputClass}
+                  placeholder="גרד כאן לגלות!"
+                />
+              ) : (
+                <ImageUpload
+                  currentUrl={card.hidden_scratch_image_url}
+                  uploading={uploading === `card-${index}-hidden`}
+                  onUpload={(e) =>
+                    handleImageUpload(
+                      e,
+                      (url) => updateScratchCard(index, { hidden_scratch_image_url: url }),
+                      `card-${index}-hidden`,
+                      "hidden-reveals"
+                    )
+                  }
+                  onRemove={() => updateScratchCard(index, { hidden_scratch_image_url: null })}
+                  label="לחץ להעלאת תמונה לחשיפה"
+                />
+              )}
             </FormField>
 
             <FormField label="שכבת הגירוד">
@@ -212,6 +494,9 @@ export default function GiftForm({ initialData, onSubmit, submitLabel }: GiftFor
         ))}
       </div>
 
+        </>
+      )}
+
       <FormField label="תמונת רקע">
         <ImageUpload
           currentUrl={form.background_image_url}
@@ -228,20 +513,16 @@ export default function GiftForm({ initialData, onSubmit, submitLabel }: GiftFor
         />
       </FormField>
 
-      <FormField label="תאריך תפוגה" hint="עד מתי הקישור יהיה פעיל">
-        <input
-          type="datetime-local"
-          value={form.expiration_date ? form.expiration_date.slice(0, 16) : ""}
-          onChange={(e) =>
-            updateField(
-              "expiration_date",
-              e.target.value ? new Date(e.target.value).toISOString() : null
-            )
-          }
-          className={inputClass}
+      <FormField label="תאריך תפוגה" hint="עד מתי הקישור יהיה פעיל — אופציונלי">
+        <DateTimePicker
+          value={form.expiration_date}
+          onChange={(iso) => updateField("expiration_date", iso)}
+          allowPastDates
         />
       </FormField>
 
+      {!isInvitation && (
+      <>
       <FormField label="אנימציית חשיפה" hint="מוצגת אחרי גירוד הכרטיס האחרון">
         <div className="grid grid-cols-2 gap-2">
           {REVEAL_ANIMATION_OPTIONS.map((opt) => (
@@ -311,9 +592,11 @@ export default function GiftForm({ initialData, onSubmit, submitLabel }: GiftFor
           dir="ltr"
         />
       </FormField>
+      </>
+      )}
 
       <FormField
-        label="סאונד אישי למתנה"
+        label={isInvitation ? "סאונד אישי להזמנה" : "סאונד אישי למתנה"}
         hint="סאונד שיתנגן כשמגרדים את הכרטיס — העלה קובץ או הקלט הודעה קולית"
       >
         <SoundUpload
@@ -349,7 +632,7 @@ export default function GiftForm({ initialData, onSubmit, submitLabel }: GiftFor
           className="w-5 h-5 rounded text-purple-600"
         />
         <label htmlFor="is_active" className="text-gray-700 font-medium">
-          מתנה פעילה
+          {isInvitation ? "הזמנה פעילה" : "מתנה פעילה"}
         </label>
       </div>
 
@@ -390,11 +673,13 @@ function ImageUpload({
   uploading,
   onUpload,
   onRemove,
+  label = "📷 לחץ להעלאת תמונה",
 }: {
   currentUrl: string | null;
   uploading: boolean;
   onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: () => void;
+  label?: string;
 }) {
   return (
     <div>
@@ -411,7 +696,7 @@ function ImageUpload({
         </div>
       ) : (
         <label className="flex items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-purple-400 transition-colors">
-          <span className="text-gray-400">{uploading ? "מעלה..." : "📷 לחץ להעלאת תמונה"}</span>
+          <span className="text-gray-400">{uploading ? "מעלה..." : label}</span>
           <input type="file" accept="image/*" onChange={onUpload} className="hidden" disabled={uploading} />
         </label>
       )}

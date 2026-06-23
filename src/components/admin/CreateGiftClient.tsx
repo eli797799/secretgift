@@ -87,7 +87,7 @@ export default function CreateGiftClient() {
           <Link href="/dashboard" className="text-gray-400 hover:text-gray-600">
             →
           </Link>
-          <h1 className="text-xl font-bold text-gray-800">יצירת מתנה חדשה</h1>
+          <h1 className="text-xl font-bold text-gray-800">יצירת מתנה / הזמנה</h1>
         </div>
       </header>
       <main className="max-w-2xl mx-auto px-4 py-6">
@@ -106,6 +106,12 @@ function formatGiftError(status: number, message?: string): string {
   if (status === 401) return "יש להתחבר מחדש כדי ליצור מתנה.";
   if (message?.includes("scratch_cards")) {
     return "חסרה עמודת כרטיסי גירוד. ב-Supabase → SQL Editor הרץ את הקובץ supabase/migration_scratch_cards.sql";
+  }
+  if (message?.includes("invitation_rsvps") || message?.includes("submit_invitation_rsvp")) {
+    return "חסרה טבלת אישורי הגעה. ב-Supabase → SQL Editor הרץ את הקובץ supabase/migration_invitation_rsvps.sql";
+  }
+  if (message?.includes("gift_type") || message?.includes("event_name")) {
+    return "חסרות עמודות הזמנה. ב-Supabase → SQL Editor הרץ את הקובץ supabase/migration_invitations.sql";
   }
   if (message?.includes("custom_sound_url") || message?.includes("scratch_sound_enabled")) {
     return "חסרות עמודות סאונד. ב-Supabase → SQL Editor הרץ את הקובץ supabase/migration_gift_sounds.sql";

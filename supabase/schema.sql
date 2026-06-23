@@ -6,6 +6,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TYPE scratch_cover_type AS ENUM ('gray', 'gold', 'silver', 'custom');
 CREATE TYPE reveal_animation_type AS ENUM ('confetti', 'fireworks', 'sparkles', 'win');
 CREATE TYPE winner_image_type AS ENUM ('trophy', 'gift', 'balloons', 'custom', 'none');
+CREATE TYPE gift_type AS ENUM ('gift', 'invitation');
 
 CREATE TABLE gifts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -23,8 +24,13 @@ CREATE TABLE gifts (
   winner_image_type winner_image_type NOT NULL DEFAULT 'gift',
   winner_image_url TEXT,
   owner_whatsapp VARCHAR(20),
+  gift_type gift_type NOT NULL DEFAULT 'gift',
+  event_name VARCHAR(255),
+  event_datetime TIMESTAMPTZ,
+  event_location TEXT,
   custom_sound_url TEXT,
   scratch_sound_enabled BOOLEAN NOT NULL DEFAULT true,
+  rsvp_require_name BOOLEAN NOT NULL DEFAULT true,
   is_active BOOLEAN NOT NULL DEFAULT true,
   view_count INTEGER NOT NULL DEFAULT 0,
   scratch_count INTEGER NOT NULL DEFAULT 0,
@@ -89,9 +95,10 @@ USING (bucket_id = 'gift-images' AND auth.role() = 'authenticated');
 
 ALTER TABLE gifts ENABLE ROW LEVEL SECURITY;
 
--- Public can read active, non-expired gifts
+-- Public read active gifts
 CREATE POLICY "Public read active gifts"
 ON gifts FOR SELECT
+TO anon
 USING (
   is_active = true
   AND (expiration_date IS NULL OR expiration_date > NOW())
@@ -125,3 +132,111 @@ USING (auth.role() = 'service_role');
 
 -- Allow public stat tracking via RPC
 GRANT EXECUTE ON FUNCTION increment_gift_stat(TEXT, TEXT) TO anon, authenticated;
+
+CREATE TABLE invitation_rsvps (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  gift_id UUID NOT NULL REFERENCES gifts(id) ON DELETE CASCADE,
+  guest_name VARCHAR(255),
+  response VARCHAR(20) NOT NULL CHECK (response IN ('attending', 'declined')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE UNIQUE INDEX invitation_rsvps_named_unique
+  ON invitation_rsvps (gift_id, guest_name)
+  WHERE guest_name IS NOT NULL;
+
+CREATE INDEX idx_invitation_rsvps_gift_id ON invitation_rsvps(gift_id);
+
+CREATE TRIGGER update_invitation_rsvps_updated_at
+  BEFORE UPDATE ON invitation_rsvps
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+ALTER TABLE invitation_rsvps ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Owners read own invitation rsvps"
+ON invitation_rsvps FOR SELECT
+USING (
+  EXISTS (
+    SELECT 1 FROM gifts g
+    WHERE g.id = gift_id AND g.user_id = auth.uid()
+  )
+);
+
+CREATE POLICY "Service role full access rsvps"
+ON invitation_rsvps FOR ALL
+USING (auth.role() = 'service_role');
+
+CREATE OR REPLACE FUNCTION submit_invitation_rsvp(
+  gift_slug TEXT,
+  guest_name TEXT,
+  rsvp_response TEXT,
+  rsvp_id UUID DEFAULT NULL
+)
+RETURNS UUID AS $$
+DECLARE
+  gid UUID;
+  require_name BOOLEAN;
+  trimmed_name TEXT;
+  result_id UUID;
+BEGIN
+  IF rsvp_response NOT IN ('attending', 'declined') THEN
+    RAISE EXCEPTION 'Invalid RSVP response';
+  END IF;
+
+  SELECT id, rsvp_require_name INTO gid, require_name FROM gifts
+  WHERE slug = gift_slug
+    AND is_active = true
+    AND gift_type = 'invitation'
+    AND (expiration_date IS NULL OR expiration_date > NOW());
+
+  IF gid IS NULL THEN
+    RAISE EXCEPTION 'Invitation not found or inactive';
+  END IF;
+
+  trimmed_name := NULLIF(trim(submit_invitation_rsvp.guest_name), '');
+
+  IF require_name THEN
+    IF trimmed_name IS NULL THEN
+      RAISE EXCEPTION 'Guest name is required';
+    END IF;
+
+    SELECT id INTO result_id
+    FROM invitation_rsvps
+    WHERE gift_id = gid AND invitation_rsvps.guest_name = trimmed_name;
+
+    IF result_id IS NOT NULL THEN
+      UPDATE invitation_rsvps
+      SET response = rsvp_response, updated_at = NOW()
+      WHERE id = result_id
+      RETURNING id INTO result_id;
+    ELSE
+      INSERT INTO invitation_rsvps (gift_id, guest_name, response)
+      VALUES (gid, trimmed_name, rsvp_response)
+      RETURNING id INTO result_id;
+    END IF;
+
+    RETURN result_id;
+  END IF;
+
+  IF rsvp_id IS NOT NULL THEN
+    UPDATE invitation_rsvps
+    SET response = rsvp_response, updated_at = NOW()
+    WHERE id = rsvp_id AND gift_id = gid
+    RETURNING id INTO result_id;
+
+    IF result_id IS NOT NULL THEN
+      RETURN result_id;
+    END IF;
+  END IF;
+
+  INSERT INTO invitation_rsvps (gift_id, guest_name, response)
+  VALUES (gid, trimmed_name, rsvp_response)
+  RETURNING id INTO result_id;
+
+  RETURN result_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION submit_invitation_rsvp(TEXT, TEXT, TEXT, UUID) TO anon, authenticated;

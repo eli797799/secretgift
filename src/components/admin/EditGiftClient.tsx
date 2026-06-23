@@ -7,6 +7,7 @@ import type { Gift, GiftFormData } from "@/types/gift";
 import { giftToFormData } from "@/lib/gift-cards";
 import { getGiftUrl } from "@/lib/utils";
 import WhatsAppShareButton, { buildSenderShareMessage } from "@/components/gift/WhatsAppShareButton";
+import InvitationRsvpPanel from "./InvitationRsvpPanel";
 
 interface EditGiftClientProps {
   gift: Gift;
@@ -37,7 +38,9 @@ export default function EditGiftClient({ gift }: EditGiftClientProps) {
             <Link href="/dashboard" className="text-gray-400 hover:text-gray-600">
               →
             </Link>
-            <h1 className="text-xl font-bold text-gray-800">עריכת מתנה</h1>
+            <h1 className="text-xl font-bold text-gray-800">
+              {gift.gift_type === "invitation" ? "עריכת הזמנה" : "עריכת מתנה"}
+            </h1>
           </div>
           <Link
             href={`/g/${gift.slug}`}
@@ -77,6 +80,13 @@ export default function EditGiftClient({ gift }: EditGiftClientProps) {
           <MiniStat label="חשיפות" value={gift.reveal_count} />
           <MiniStat label="שיתופים" value={gift.share_count} />
         </div>
+
+        {gift.gift_type === "invitation" && (
+          <InvitationRsvpPanel
+            giftId={gift.id}
+            requireName={gift.rsvp_require_name ?? true}
+          />
+        )}
 
         <GiftForm initialData={initialData} onSubmit={handleSubmit} submitLabel="שמור שינויים" />
       </main>

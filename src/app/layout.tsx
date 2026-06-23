@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/react";
+import SiteCredit from "@/components/SiteCredit";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,6 +17,7 @@ export default function RootLayout({
     <html lang="he" dir="rtl">
       <body className="antialiased min-h-screen bg-gray-50">
         {children}
+        <SiteCredit />
         <Analytics />
       </body>
     </html>

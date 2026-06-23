@@ -5,6 +5,7 @@ import { getGiftUrl, formatDate } from "@/lib/utils";
 import { getScratchCards } from "@/lib/gift-cards";
 import WhatsAppShareButton, { buildSenderShareMessage } from "@/components/gift/WhatsAppShareButton";
 import Link from "next/link";
+import InvitationRsvpPanel from "./InvitationRsvpPanel";
 
 interface GiftCardProps {
   gift: Gift;
@@ -24,7 +25,10 @@ export default function GiftCard({ gift, onToggle, onDelete }: GiftCardProps) {
     <div className={`bg-white rounded-xl shadow-sm border p-5 ${!gift.is_active ? "opacity-60" : ""}`}>
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex-1 min-w-0">
-          <h3 className="font-bold text-lg text-gray-800 truncate">{gift.title}</h3>
+          <h3 className="font-bold text-lg text-gray-800 truncate">
+          {gift.gift_type === "invitation" ? "🎟️ " : "🎁 "}
+          {gift.gift_type === "invitation" ? gift.event_name || gift.title : gift.title}
+        </h3>
           <p className="text-gray-500 text-sm truncate mt-1">{gift.message}</p>
         </div>
         <span
@@ -42,6 +46,14 @@ export default function GiftCard({ gift, onToggle, onDelete }: GiftCardProps) {
         <StatBadge icon="🎉" label="חשיפות" value={gift.reveal_count} />
         <StatBadge icon="📱" label="שיתופים" value={gift.share_count} />
       </div>
+
+      {gift.gift_type === "invitation" && (
+        <InvitationRsvpPanel
+          giftId={gift.id}
+          requireName={gift.rsvp_require_name ?? true}
+          compact
+        />
+      )}
 
       <div className="text-xs text-gray-400 mb-4">
         {cardCount} כרטיסי גירוד · תפוגה: {formatDate(gift.expiration_date)}

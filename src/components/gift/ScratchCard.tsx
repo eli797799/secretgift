@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useCallback } from "react";
-import type { ScratchCoverType } from "@/types/gift";
+import { useEffect, useRef, useCallback, useState } from "react";
+import type { HiddenRevealType, ScratchCoverType } from "@/types/gift";
 import { ScratchSound } from "@/lib/scratch-sound";
 
 interface ScratchCardProps {
+  hiddenRevealType?: HiddenRevealType;
   hiddenText: string;
+  hiddenImageUrl?: string | null;
   coverType: ScratchCoverType;
   coverImageUrl: string | null;
   scratchSoundEnabled?: boolean;
@@ -20,10 +22,19 @@ const COVER_COLORS: Record<string, string> = {
   silver: "#C0C0C0",
 };
 
-const REVEAL_THRESHOLD = 0.3;
+const COVER_PLACEHOLDER: Record<string, string> = {
+  gray: "#9CA3AF",
+  gold: "#D4AF37",
+  silver: "#C0C0C0",
+  custom: "#9CA3AF",
+};
+
+const REVEAL_THRESHOLD = 0.6;
 
 export default function ScratchCard({
+  hiddenRevealType = "text",
   hiddenText,
+  hiddenImageUrl,
   coverType,
   coverImageUrl,
   scratchSoundEnabled = true,
@@ -40,6 +51,7 @@ export default function ScratchCard({
   const brushSizeRef = useRef(50);
   const scratchSoundRef = useRef<ScratchSound | null>(null);
   const customAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [coverReady, setCoverReady] = useState(false);
 
   const startCustomSound = useCallback(() => {
     if (!customSoundUrl) return;
@@ -144,6 +156,8 @@ export default function ScratchCard({
     const container = containerRef.current;
     if (!canvas || !container) return;
 
+    setCoverReady(false);
+
     const resize = () => {
       const rect = container.getBoundingClientRect();
       canvas.width = rect.width * 2;
@@ -158,7 +172,9 @@ export default function ScratchCard({
         img.crossOrigin = "anonymous";
         img.onload = () => {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          setCoverReady(true);
         };
+        img.onerror = () => setCoverReady(true);
         img.src = coverImageUrl;
       } else {
         const color = COVER_COLORS[coverType] || COVER_COLORS.gray;
@@ -182,6 +198,7 @@ export default function ScratchCard({
         ctx.font = `${canvas.width * 0.06}px sans-serif`;
         ctx.textAlign = "center";
         ctx.fillText("✋ גרד כאן", canvas.width / 2, canvas.height / 2);
+        setCoverReady(true);
       }
     };
 
@@ -235,21 +252,51 @@ export default function ScratchCard({
 
   return (
     <div ref={containerRef} className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">
-      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100 p-6">
-        <p className="text-2xl sm:text-3xl font-bold text-center text-gray-800 leading-relaxed">
-          {hiddenText || "🎁 הפתעה מיוחדת!"}
-        </p>
+      <div
+        className={`absolute inset-0 flex items-center justify-center bg-gradient-to-br from-amber-50 to-orange-100 p-4 ${
+          coverReady ? "" : "invisible"
+        }`}
+      >
+        {hiddenRevealType === "image" && hiddenImageUrl ? (
+          <img
+            src={hiddenImageUrl}
+            alt=""
+            className="w-full h-full object-contain"
+          />
+        ) : (
+          <p className="text-2xl sm:text-3xl font-bold text-center text-gray-800 leading-relaxed px-2">
+            {hiddenText || "🎁 הפתעה מיוחדת!"}
+          </p>
+        )}
       </div>
+
+      {!coverReady && (
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center"
+          style={{ backgroundColor: COVER_PLACEHOLDER[coverType] ?? COVER_PLACEHOLDER.gray }}
+        >
+          <span className="text-white/40 text-lg font-medium">✋ גרד כאן</span>
+        </div>
+      )}
+
       <canvas
         ref={canvasRef}
-        className="scratch-canvas absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing touch-none"
+        className={`scratch-canvas absolute inset-0 w-full h-full touch-none ${
+          coverReady
+            ? "opacity-100 cursor-grab active:cursor-grabbing"
+            : "opacity-0 pointer-events-none"
+        }`}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerLeave={handlePointerUp}
         onPointerCancel={handlePointerUp}
       />
-      <p className="absolute bottom-3 left-0 right-0 text-center text-white/80 text-sm pointer-events-none drop-shadow">
+      <p
+        className={`absolute bottom-3 left-0 right-0 text-center text-white/80 text-sm pointer-events-none drop-shadow ${
+          coverReady ? "" : "opacity-0"
+        }`}
+      >
         גרד עם האצבע או העכבר
       </p>
     </div>

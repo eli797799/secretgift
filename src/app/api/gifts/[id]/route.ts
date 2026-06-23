@@ -17,7 +17,12 @@ export async function GET(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { data, error } = await supabase.from("gifts").select("*").eq("id", id).single();
+  const { data, error } = await supabase
+    .from("gifts")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", user.id)
+    .single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 404 });
@@ -47,6 +52,7 @@ export async function PUT(
     .from("gifts")
     .update(payload)
     .eq("id", id)
+    .eq("user_id", user.id)
     .select()
     .single();
 
@@ -71,7 +77,11 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { error } = await supabase.from("gifts").delete().eq("id", id);
+  const { error } = await supabase
+    .from("gifts")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", user.id);
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
