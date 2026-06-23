@@ -1,25 +1,30 @@
 "use client";
 
-import { getWhatsAppShareUrl } from "@/lib/utils";
+import { getWhatsAppShareUrl, getWhatsAppDirectUrl } from "@/lib/utils";
 
 interface WhatsAppShareButtonProps {
   message: string;
+  phone?: string | null;
   onShare?: () => void;
   className?: string;
   size?: "sm" | "lg";
   label?: string;
+  variant?: "green" | "gold";
 }
 
 export default function WhatsAppShareButton({
   message,
+  phone,
   onShare,
   className = "",
   size = "lg",
   label = "שתף בוואטסאפ",
+  variant = "green",
 }: WhatsAppShareButtonProps) {
   function handleClick() {
     onShare?.();
-    window.open(getWhatsAppShareUrl(message), "_blank");
+    const url = phone ? getWhatsAppDirectUrl(phone, message) : getWhatsAppShareUrl(message);
+    window.open(url, "_blank");
   }
 
   const sizeClass =
@@ -27,11 +32,16 @@ export default function WhatsAppShareButton({
       ? "px-8 py-4 text-lg rounded-full w-full max-w-xs"
       : "px-3 py-1.5 text-xs rounded-lg";
 
+  const colorClass =
+    variant === "gold"
+      ? "bg-amber-500 hover:bg-amber-600 text-white"
+      : "bg-[#25D366] hover:bg-[#20bd5a] text-white";
+
   return (
     <button
       type="button"
       onClick={handleClick}
-      className={`flex items-center justify-center gap-2 bg-[#25D366] text-white font-semibold shadow-md hover:bg-[#20bd5a] hover:shadow-lg transition-all ${sizeClass} ${className}`}
+      className={`flex items-center justify-center gap-2 font-semibold shadow-md hover:shadow-lg transition-all ${sizeClass} ${colorClass} ${className}`}
     >
       <WhatsAppIcon className={size === "lg" ? "w-6 h-6" : "w-4 h-4"} />
       {label}

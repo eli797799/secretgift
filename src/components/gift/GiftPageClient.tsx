@@ -5,7 +5,7 @@ import type { Gift } from "@/types/gift";
 import ScratchCard from "./ScratchCard";
 import RevealAnimation from "./RevealAnimation";
 import WhatsAppShareButton, { buildRecipientShareMessage } from "./WhatsAppShareButton";
-import { getGiftUrl, WINNER_EMOJIS } from "@/lib/utils";
+import { getGiftUrl, WINNER_EMOJIS, buildRedemptionMessage } from "@/lib/utils";
 import { getScratchCards } from "@/lib/gift-cards";
 
 interface GiftPageClientProps {
@@ -135,6 +135,8 @@ export default function GiftPageClient({ gift }: GiftPageClientProps) {
             hiddenText={currentCard.hidden_scratch_text}
             coverType={currentCard.scratch_cover_type}
             coverImageUrl={currentCard.scratch_cover_image_url}
+            scratchSoundEnabled={gift.scratch_sound_enabled ?? true}
+            customSoundUrl={gift.custom_sound_url}
             onScratchStart={handleScratchStart}
             onReveal={handleCardReveal}
           />
@@ -148,6 +150,14 @@ export default function GiftPageClient({ gift }: GiftPageClientProps) {
 
         {phase === "final" && (
           <div className="mt-8 flex flex-col items-center gap-4 animate-bounce-in">
+            {gift.owner_whatsapp && (
+              <WhatsAppShareButton
+                phone={gift.owner_whatsapp}
+                message={buildRedemptionMessage(gift.title, gift.message)}
+                label="מימוש לזכייה"
+                variant="gold"
+              />
+            )}
             <WhatsAppShareButton
               message={buildRecipientShareMessage(getGiftUrl(gift.slug))}
               onShare={handleWhatsAppShare}

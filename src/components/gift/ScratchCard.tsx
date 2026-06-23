@@ -2,11 +2,14 @@
 
 import { useEffect, useRef, useCallback } from "react";
 import type { ScratchCoverType } from "@/types/gift";
+import { ScratchSound } from "@/lib/scratch-sound";
 
 interface ScratchCardProps {
   hiddenText: string;
   coverType: ScratchCoverType;
   coverImageUrl: string | null;
+  scratchSoundEnabled?: boolean;
+  customSoundUrl?: string | null;
   onScratchStart: () => void;
   onReveal: () => void;
 }
@@ -23,6 +26,8 @@ export default function ScratchCard({
   hiddenText,
   coverType,
   coverImageUrl,
+  scratchSoundEnabled = true,
+  customSoundUrl,
   onScratchStart,
   onReveal,
 }: ScratchCardProps) {
@@ -33,6 +38,27 @@ export default function ScratchCard({
   const hasRevealed = useRef(false);
   const lastPos = useRef<{ x: number; y: number } | null>(null);
   const brushSizeRef = useRef(50);
+  const scratchSoundRef = useRef<ScratchSound | null>(null);
+  const customAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  const startCustomSound = useCallback(() => {
+    if (!customSoundUrl) return;
+    if (!customAudioRef.current) {
+      customAudioRef.current = new Audio(customSoundUrl);
+    }
+    const audio = customAudioRef.current;
+    audio.currentTime = 0;
+    void audio.play().catch(() => {
+      // autoplay blocked until user gesture — pointer down counts
+    });
+  }, [customSoundUrl]);
+
+  const stopCustomSound = useCallback(() => {
+    const audio = customAudioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
+  }, []);
 
   const checkReveal = useCallback(() => {
     const canvas = canvasRef.current;
@@ -83,6 +109,11 @@ export default function ScratchCard({
         ctx.moveTo(lastPos.current.x, lastPos.current.y);
         ctx.lineTo(x, y);
         ctx.stroke();
+
+        const dx = x - lastPos.current.x;
+        const dy = y - lastPos.current.y;
+        const speed = Math.hypot(dx, dy);
+        scratchSoundRef.current?.update(speed);
       }
 
       ctx.beginPath();
@@ -164,6 +195,11 @@ export default function ScratchCard({
     (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId);
     isDrawing.current = true;
     lastPos.current = null;
+    if (scratchSoundEnabled) {
+      if (!scratchSoundRef.current) scratchSoundRef.current = new ScratchSound();
+      scratchSoundRef.current.start();
+    }
+    startCustomSound();
     const pos = getPos(e.clientX, e.clientY);
     drawScratch(pos.x, pos.y);
   }
@@ -180,9 +216,22 @@ export default function ScratchCard({
     if (isDrawing.current) {
       isDrawing.current = false;
       lastPos.current = null;
+      scratchSoundRef.current?.stop();
+      stopCustomSound();
       checkReveal();
     }
   }
+
+  useEffect(() => {
+    return () => {
+      scratchSoundRef.current?.stop();
+      stopCustomSound();
+    };
+  }, [stopCustomSound]);
+
+  useEffect(() => {
+    customAudioRef.current = null;
+  }, [customSoundUrl]);
 
   return (
     <div ref={containerRef} className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden shadow-lg">

@@ -55,12 +55,20 @@ export default function EditGiftClient({ gift }: EditGiftClientProps) {
             <span className="font-medium text-blue-700">קישור: </span>
             <span className="text-blue-600 break-all">{getGiftUrl(gift.slug)}</span>
           </div>
-          <WhatsAppShareButton
-            message={buildSenderShareMessage(getGiftUrl(gift.slug), gift.title)}
-            size="sm"
-            label="שלח בוואטסאפ"
-            className="!w-auto"
-          />
+          <div className="flex flex-wrap gap-2">
+            <WhatsAppShareButton
+              message={buildSenderShareMessage(getGiftUrl(gift.slug), gift.title)}
+              size="sm"
+              label="שלח בוואטסאפ"
+              className="!w-auto"
+            />
+            <Link
+              href={`/dashboard/gifts/${gift.id}/print`}
+              className="inline-flex items-center gap-1.5 text-xs bg-green-50 text-green-700 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors font-medium"
+            >
+              🖨️ הדפס QR Code
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">

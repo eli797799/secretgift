@@ -10,7 +10,7 @@ import { useState } from "react";
 
 export default function CreateGiftClient() {
   const router = useRouter();
-  const [createdSlug, setCreatedSlug] = useState<string | null>(null);
+  const [createdGift, setCreatedGift] = useState<{ id: string; slug: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(data: GiftFormData) {
@@ -24,7 +24,7 @@ export default function CreateGiftClient() {
 
     if (res.ok) {
       const gift = await res.json();
-      setCreatedSlug(gift.slug);
+      setCreatedGift({ id: gift.id, slug: gift.slug });
       return;
     }
 
@@ -32,8 +32,8 @@ export default function CreateGiftClient() {
     setError(formatGiftError(res.status, body.error));
   }
 
-  if (createdSlug) {
-    const url = getGiftUrl(createdSlug);
+  if (createdGift) {
+    const url = getGiftUrl(createdGift.slug);
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-lg p-8 max-w-md w-full text-center">
@@ -56,7 +56,13 @@ export default function CreateGiftClient() {
               className="!max-w-none"
             />
             <Link
-              href={`/g/${createdSlug}`}
+              href={`/dashboard/gifts/${createdGift.id}/print`}
+              className="bg-green-50 text-green-700 py-3 rounded-xl font-semibold hover:bg-green-100"
+            >
+              🖨️ הדפס QR Code
+            </Link>
+            <Link
+              href={`/g/${createdGift.slug}`}
               target="_blank"
               className="bg-blue-50 text-blue-600 py-3 rounded-xl font-semibold hover:bg-blue-100"
             >
@@ -98,13 +104,18 @@ export default function CreateGiftClient() {
 
 function formatGiftError(status: number, message?: string): string {
   if (status === 401) return "יש להתחבר מחדש כדי ליצור מתנה.";
+  if (message?.includes("scratch_cards")) {
+    return "חסרה עמודת כרטיסי גירוד. ב-Supabase → SQL Editor הרץ את הקובץ supabase/migration_scratch_cards.sql";
+  }
+  if (message?.includes("custom_sound_url") || message?.includes("scratch_sound_enabled")) {
+    return "חסרות עמודות סאונד. ב-Supabase → SQL Editor הרץ את הקובץ supabase/migration_gift_sounds.sql";
+  }
   if (
     message?.includes("gifts") ||
-    message?.includes("scratch_cards") ||
     message?.includes("PGRST205") ||
     message?.includes("schema cache")
   ) {
-    return "מסד הנתונים לא מוגדר. ב-Supabase פתח SQL Editor, העתק והרץ את הקובץ supabase/schema.sql.";
+    return "מסד הנתונים לא מוגדר. ב-Supabase → SQL Editor הרץ את הקובץ supabase/schema.sql";
   }
   return message || "שגיאה ביצירת המתנה. נסה שוב.";
 }

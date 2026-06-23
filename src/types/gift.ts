@@ -23,6 +23,9 @@ export interface Gift {
   reveal_animation: RevealAnimationType;
   winner_image_type: WinnerImageType;
   winner_image_url: string | null;
+  owner_whatsapp: string | null;
+  custom_sound_url: string | null;
+  scratch_sound_enabled: boolean;
   is_active: boolean;
   view_count: number;
   scratch_count: number;
@@ -41,6 +44,9 @@ export interface GiftFormData {
   reveal_animation: RevealAnimationType;
   winner_image_type: WinnerImageType;
   winner_image_url: string | null;
+  owner_whatsapp: string | null;
+  custom_sound_url: string | null;
+  scratch_sound_enabled: boolean;
   is_active: boolean;
 }
 
@@ -81,5 +87,8 @@ export const DEFAULT_GIFT_FORM: GiftFormData = {
   reveal_animation: "confetti",
   winner_image_type: "gift",
   winner_image_url: null,
+  owner_whatsapp: null,
+  custom_sound_url: null,
+  scratch_sound_enabled: true,
   is_active: true,
 };

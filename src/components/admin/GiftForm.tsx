@@ -15,6 +15,7 @@ import {
   WINNER_IMAGE_OPTIONS,
 } from "@/types/gift";
 import { DEFAULT_SCRATCH_CARD } from "@/lib/gift-cards";
+import SoundUpload from "./SoundUpload";
 
 interface GiftFormProps {
   initialData?: GiftFormData;
@@ -73,6 +74,20 @@ export default function GiftForm({ initialData, onSubmit, submitLabel }: GiftFor
     if (res.ok) {
       const { url } = await res.json();
       onSuccess(url);
+    }
+    setUploading(null);
+  }
+
+  async function handleAudioUpload(file: File) {
+    setUploading("custom_sound_url");
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("folder", "sounds");
+
+    const res = await fetch("/api/upload", { method: "POST", body: formData });
+    if (res.ok) {
+      const { url } = await res.json();
+      updateField("custom_sound_url", url);
     }
     setUploading(null);
   }
@@ -282,6 +297,48 @@ export default function GiftForm({ initialData, onSubmit, submitLabel }: GiftFor
           />
         )}
       </FormField>
+
+      <FormField
+        label="מספר וואטסאפ למימוש זכייה"
+        hint="המקבל יוכל ללחוץ 'מימוש לזכייה' ולשלוח לך הודעה. לדוגמה: 0501234567"
+      >
+        <input
+          type="tel"
+          value={form.owner_whatsapp || ""}
+          onChange={(e) => updateField("owner_whatsapp", e.target.value || null)}
+          className={inputClass}
+          placeholder="0501234567"
+          dir="ltr"
+        />
+      </FormField>
+
+      <FormField
+        label="סאונד אישי למתנה"
+        hint="סאונד שיתנגן כשמגרדים את הכרטיס — העלה קובץ או הקלט הודעה קולית"
+      >
+        <SoundUpload
+          currentUrl={form.custom_sound_url}
+          uploading={uploading === "custom_sound_url"}
+          onUpload={handleAudioUpload}
+          onRemove={() => updateField("custom_sound_url", null)}
+        />
+      </FormField>
+
+      <div className="flex items-center gap-3 bg-gray-50 rounded-xl p-4">
+        <input
+          type="checkbox"
+          id="scratch_sound_enabled"
+          checked={form.scratch_sound_enabled}
+          onChange={(e) => updateField("scratch_sound_enabled", e.target.checked)}
+          className="w-5 h-5 rounded text-purple-600"
+        />
+        <label htmlFor="scratch_sound_enabled" className="text-gray-700">
+          <span className="font-medium">סאונד גירוד</span>
+          <span className="block text-xs text-gray-500 mt-0.5">
+            צליל של גרידה בזמן שמגרדים את הכרטיס
+          </span>
+        </label>
+      </div>
 
       <div className="flex items-center gap-3">
         <input

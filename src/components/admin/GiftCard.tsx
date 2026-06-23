@@ -68,6 +68,12 @@ export default function GiftCard({ gift, onToggle, onDelete }: GiftCardProps) {
           👁️ תצוגה מקדימה
         </Link>
         <Link
+          href={`/dashboard/gifts/${gift.id}/print`}
+          className="text-xs bg-green-50 text-green-700 px-3 py-1.5 rounded-lg hover:bg-green-100 transition-colors"
+        >
+          🖨️ הדפס QR
+        </Link>
+        <Link
           href={`/dashboard/gifts/${gift.id}/edit`}
           className="text-xs bg-amber-50 text-amber-600 px-3 py-1.5 rounded-lg hover:bg-amber-100 transition-colors"
         >

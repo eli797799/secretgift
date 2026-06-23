@@ -19,6 +19,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
+  const isImage = file.type.startsWith("image/");
+  const isAudio = file.type.startsWith("audio/");
+
+  if (!isImage && !isAudio) {
+    return NextResponse.json({ error: "Only image and audio files are allowed" }, { status: 400 });
+  }
+
+  const maxSize = isAudio ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+  if (file.size > maxSize) {
+    return NextResponse.json(
+      { error: isAudio ? "Audio file too large (max 10MB)" : "Image file too large (max 5MB)" },
+      { status: 400 }
+    );
+  }
+
   const ext = file.name.split(".").pop();
   const fileName = `${user.id}/${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 

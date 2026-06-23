@@ -29,6 +29,9 @@ export function giftToFormData(gift: Gift): GiftFormData {
     reveal_animation: gift.reveal_animation,
     winner_image_type: gift.winner_image_type,
     winner_image_url: gift.winner_image_url,
+    owner_whatsapp: gift.owner_whatsapp,
+    custom_sound_url: gift.custom_sound_url,
+    scratch_sound_enabled: gift.scratch_sound_enabled ?? true,
     is_active: gift.is_active,
   };
 }

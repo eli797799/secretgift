@@ -29,6 +29,23 @@ export function getWhatsAppShareUrl(message: string): string {
   return `https://wa.me/?text=${encodeURIComponent(message)}`;
 }
 
+export function normalizeWhatsAppPhone(phone: string): string {
+  let digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("0")) digits = "972" + digits.slice(1);
+  if (digits.length === 9 && !digits.startsWith("972")) digits = "972" + digits;
+  return digits;
+}
+
+export function getWhatsAppDirectUrl(phone: string, message: string): string {
+  const normalized = normalizeWhatsAppPhone(phone);
+  if (!normalized) return getWhatsAppShareUrl(message);
+  return `https://wa.me/${normalized}?text=${encodeURIComponent(message)}`;
+}
+
+export function buildRedemptionMessage(giftTitle: string, giftMessage: string): string {
+  return `שלום! 🎉\n\nגרדתי את המתנה "${giftTitle}" ואני רוצה לממש את הזכייה.\n\nהפרס שלי:\n${giftMessage}`;
+}
+
 export const WINNER_EMOJIS: Record<string, string> = {
   trophy: "🏆",
   gift: "🎁",
